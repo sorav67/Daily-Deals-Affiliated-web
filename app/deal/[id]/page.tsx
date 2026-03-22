@@ -6,7 +6,7 @@ import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL as string });
-const adapter = new PrismaNeon(pool);
+const adapter = new PrismaNeon(pool as any);
 const prisma = new PrismaClient({ adapter });
 
 type Props = {
