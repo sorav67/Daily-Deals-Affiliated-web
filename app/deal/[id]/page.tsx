@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'; 
 
 import { PrismaClient } from '@prisma/client';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
+import { neon } from '@neondatabase/serverless';
+import { PrismaNeonHTTP } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
@@ -10,22 +10,13 @@ import ClaimButton from '../../components/ClaimButton';
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   if (!globalForPrisma.prisma) {
-    let dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) throw new Error("DATABASE_URL is missing!");
+    let dbUrl = process.env.NEON_DATABASE_URL;
+    if (!dbUrl) throw new Error("NEON_DATABASE_URL is missing!");
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    const url = new URL(dbUrl);
-    const pool = new Pool({
-      host: url.hostname,
-      user: url.username,
-      password: url.password,
-      database: url.pathname.slice(1),
-      port: parseInt(url.port) || 5432,
-      ssl: true,
-    });
-
-    const adapter = new PrismaNeon(pool as any);
+    const sql = neon(dbUrl);
+    const adapter = new PrismaNeonHTTP(sql as any);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;

@@ -1,31 +1,28 @@
 export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
+import { neon } from '@neondatabase/serverless';
+import { PrismaNeonHTTP } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
   if (!globalForPrisma.prisma) {
-    let dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) throw new Error("DATABASE_URL is missing!");
+    // 🛡️ Using the new variable name to prevent Prisma/Vercel conflicts
+    let dbUrl = process.env.NEON_DATABASE_URL;
 
+    if (!dbUrl) {
+      throw new Error("NEON_DATABASE_URL is missing! Please update your Vercel Environment Variables.");
+    }
+
+    // Clean formatting
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    const url = new URL(dbUrl);
-    const pool = new Pool({
-      host: url.hostname,
-      user: url.username,
-      password: url.password,
-      database: url.pathname.slice(1),
-      port: parseInt(url.port) || 5432,
-      ssl: true,
-    });
+    // 🚀 Initialize using the HTTP fetch-based driver (Bulletproof on Vercel)
+    const sql = neon(dbUrl);
+    const adapter = new PrismaNeonHTTP(sql as any);
 
-    // 🛡️ THE FORCE: casting to 'any' stops the TypeScript hall monitor
-    const adapter = new PrismaNeon(pool as any);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
@@ -33,7 +30,9 @@ const getPrisma = () => {
 
 export default async function Home() {
   const prisma = getPrisma();
-  const deals = await prisma.deal.findMany({ orderBy: { createdAt: 'desc' } });
+  const deals = await prisma.deal.findMany({ 
+    orderBy: { createdAt: 'desc' } 
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -53,7 +52,7 @@ export default async function Home() {
         {deals.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
             <h3 className="text-lg font-bold text-slate-700">Awaiting Signal...</h3>
-            <p className="text-slate-500">The AI is hunting for discounts right now.</p>
+            <p className="text-slate-500">No deals found yet. Checking for new discounts...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
