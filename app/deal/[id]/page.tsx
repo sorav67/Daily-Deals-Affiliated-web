@@ -1,23 +1,20 @@
 import { PrismaClient } from '@prisma/client';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL as string });
-const adapter = new PrismaNeon(pool as any);
-const prisma = new PrismaClient({ adapter });
+// 1. THE FIX: We removed the Neon Adapter entirely!
+// Standard Prisma will automatically read your clean DATABASE_URL from Vercel.
+const prisma = new PrismaClient();
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-// 1. Generate Metadata
+// 2. Generate Metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
   
-  // 🚨 FAILSAFE 1: If Next.js sends a ghost request, stop immediately!
   if (!resolvedParams || !resolvedParams.id) {
     return { title: 'Deal Not Found' };
   }
@@ -39,11 +36,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// 2. The actual Product Page UI
+// 3. The actual Product Page UI
 export default async function DealPage({ params }: Props) {
   const resolvedParams = await params;
 
-  // 🚨 FAILSAFE 2: Block undefined IDs before Prisma panics!
   if (!resolvedParams || !resolvedParams.id) {
     notFound();
   }
