@@ -1,10 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
+// 🗑️ WE DELETED THE FRAGILE NEON ADAPTER IMPORTS!
 
-// 🛡️ THE TITANIUM SHIELD
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
@@ -15,20 +13,20 @@ const getPrisma = () => {
       throw new Error("DATABASE_URL is missing from Vercel!");
     }
 
-    // 1. Strip away any hidden quotes or spaces Vercel adds
+    // Strip away any hidden quotes or spaces Vercel adds
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
-    
-    // 2. Auto-fix the URL if the "postgresql://" prefix was accidentally left out
     if (!dbUrl.startsWith('postgres')) {
       dbUrl = 'postgresql://' + dbUrl;
     }
 
-    // 3. FORCE Prisma's internal engine to use our perfectly cleaned URL
-    process.env.DATABASE_URL = dbUrl;
-
-    const pool = new Pool({ connectionString: dbUrl });
-    const adapter = new PrismaNeon(pool as any);
-    globalForPrisma.prisma = new PrismaClient({ adapter });
+    // 🚀 We use Standard Prisma. We pass the clean URL directly and use 'as any' to silence TypeScript.
+    globalForPrisma.prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: dbUrl,
+        },
+      },
+    } as any);
   }
   return globalForPrisma.prisma;
 };
@@ -144,9 +142,6 @@ export default async function Home() {
           </div>
           <p className="text-slate-400 text-sm">
             © {new Date().getFullYear()} LootDrop. All rights reserved.
-          </p>
-          <p className="text-slate-500 text-xs mt-2 max-w-md mx-auto">
-            We may earn a commission for purchases made through our links. This helps keep the server running!
           </p>
         </div>
       </footer>

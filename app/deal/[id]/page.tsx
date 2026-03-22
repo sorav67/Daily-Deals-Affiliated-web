@@ -1,37 +1,28 @@
 export const dynamic = 'force-dynamic'; 
 
 import { PrismaClient } from '@prisma/client';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-// 1. THE PRISMA 7 FIX + VERCEL SANITIZER SHIELD
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
   if (!globalForPrisma.prisma) {
-    // Note: 'let' instead of 'const' so we can modify and clean the string
     let dbUrl = process.env.DATABASE_URL;
 
-    if (!dbUrl) {
-      throw new Error("DATABASE_URL is missing from Vercel!");
+    if (!dbUrl) throw new Error("DATABASE_URL is missing from Vercel!");
+
+    dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
+    if (!dbUrl.startsWith('postgres')) {
+      dbUrl = 'postgresql://' + dbUrl;
     }
 
-    // 🛡️ THE SHIELD: This aggressively strips away any quotes or spaces Vercel adds
-    dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
-
-    console.log("Sanitized URL Check:", dbUrl.substring(0, 15) + "...");
-
-    // Set up the Neon connection pool with the squeaky-clean URL
-    const pool = new Pool({ connectionString: dbUrl });
-    
-    // We use "as any" to bypass the strict TypeScript version mismatch
-    const adapter = new PrismaNeon(pool as any);
-
-    // Prisma 7 is finally happy because it receives the required 'adapter'
-    globalForPrisma.prisma = new PrismaClient({ adapter });
+    globalForPrisma.prisma = new PrismaClient({
+      datasources: {
+        db: { url: dbUrl },
+      },
+    } as any);
   }
   return globalForPrisma.prisma;
 };
@@ -40,16 +31,12 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
-// 2. Generate Metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
   if (!resolvedParams?.id) return { title: 'Deal Not Found' };
 
   const prisma = getPrisma();
-  
-  const deal = await prisma.deal.findUnique({
-    where: { id: resolvedParams.id },
-  });
+  const deal = await prisma.deal.findUnique({ where: { id: resolvedParams.id } });
 
   if (!deal) return { title: 'Deal Not Found' };
 
@@ -64,16 +51,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// 3. The actual Product Page UI
 export default async function DealPage({ params }: Props) {
   const resolvedParams = await params;
   if (!resolvedParams?.id) notFound();
 
   const prisma = getPrisma();
-
-  const deal = await prisma.deal.findUnique({
-    where: { id: resolvedParams.id },
-  });
+  const deal = await prisma.deal.findUnique({ where: { id: resolvedParams.id } });
 
   if (!deal) notFound();
 
@@ -99,15 +82,12 @@ export default async function DealPage({ params }: Props) {
           <span className="inline-block px-4 py-1.5 bg-slate-100 text-slate-600 text-sm font-bold uppercase tracking-wider rounded-full mb-6">
             {deal.platform} Deal
           </span>
-          
           <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
             {deal.title}
           </h1>
-          
           <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
             {deal.content}
           </p>
-          
           <ClaimButton url={deal.affiliateUrl} platform={deal.platform} />
         </div>
 
