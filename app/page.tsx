@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
+import { neon } from '@neondatabase/serverless';
+import { PrismaNeonHTTP } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
@@ -8,19 +10,18 @@ const getPrisma = () => {
   if (!globalForPrisma.prisma) {
     let dbUrl = process.env.DATABASE_URL;
 
-    if (!dbUrl) throw new Error("DATABASE_URL is missing from Vercel!");
+    if (!dbUrl) throw new Error("DATABASE_URL is missing!");
 
-    // Clean the URL
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) {
       dbUrl = 'postgresql://' + dbUrl;
     }
 
-    // THE MAGIC BULLET: We overwrite the memory variable so standard Prisma 7 finds the clean URL
-    process.env.DATABASE_URL = dbUrl;
+    // 🚀 THE FIX: We use the HTTP connection that proved successful in your test script!
+    const sql = neon(dbUrl);
+    const adapter = new PrismaNeonHTTP(sql as any);
 
-    // Prisma 7 is happy with an empty constructor
-    globalForPrisma.prisma = new PrismaClient();
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
 };
