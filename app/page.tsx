@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 
-// 🛡️ THE SHIELD: Now protecting the homepage!
+// 🛡️ THE TITANIUM SHIELD
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
@@ -15,10 +15,16 @@ const getPrisma = () => {
       throw new Error("DATABASE_URL is missing from Vercel!");
     }
 
-    // Aggressively strips away any quotes or spaces Vercel adds
+    // 1. Strip away any hidden quotes or spaces Vercel adds
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
+    
+    // 2. Auto-fix the URL if the "postgresql://" prefix was accidentally left out
+    if (!dbUrl.startsWith('postgres')) {
+      dbUrl = 'postgresql://' + dbUrl;
+    }
 
-    console.log("Homepage URL Check:", dbUrl.substring(0, 15) + "...");
+    // 3. FORCE Prisma's internal engine to use our perfectly cleaned URL
+    process.env.DATABASE_URL = dbUrl;
 
     const pool = new Pool({ connectionString: dbUrl });
     const adapter = new PrismaNeon(pool as any);
@@ -28,7 +34,6 @@ const getPrisma = () => {
 };
 
 export default async function Home() {
-  // Wake up Prisma safely ONLY when the page is actually requested
   const prisma = getPrisma();
 
   // Fetch all deals from the database, newest first
