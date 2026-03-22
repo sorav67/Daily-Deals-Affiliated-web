@@ -25,7 +25,7 @@ const getPrisma = () => {
       ssl: true,
     });
 
-    const adapter = new PrismaNeon(pool);
+    const adapter = new PrismaNeon(pool as any);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
