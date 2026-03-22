@@ -9,18 +9,15 @@ const getPrisma = () => {
   if (!globalForPrisma.prisma) {
     let dbUrl = process.env.DATABASE_URL;
 
-    if (!dbUrl) throw new Error("DATABASE_URL is missing from Vercel!");
+    if (!dbUrl) throw new Error("DATABASE_URL is missing!");
 
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) {
       dbUrl = 'postgresql://' + dbUrl;
     }
 
-    globalForPrisma.prisma = new PrismaClient({
-      datasources: {
-        db: { url: dbUrl },
-      },
-    } as any);
+    process.env.DATABASE_URL = dbUrl;
+    globalForPrisma.prisma = new PrismaClient();
   }
   return globalForPrisma.prisma;
 };
@@ -36,20 +33,10 @@ export async function POST(request: Request) {
     }
 
     const newDeal = await prisma.deal.create({
-      data: {
-        title,
-        content,
-        affiliateUrl,
-        platform,
-        imageUrl,
-      },
+      data: { title, content, affiliateUrl, platform, imageUrl },
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Deal successfully published!",
-      dealId: newDeal.id 
-    }, { status: 200 });
+    return NextResponse.json({ success: true, message: "Deal successfully published!", dealId: newDeal.id }, { status: 200 });
 
   } catch (error) {
     console.error("Error saving deal:", error);
