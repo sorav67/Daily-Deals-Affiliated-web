@@ -7,20 +7,24 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-// 1. THE PRISMA 7 FIX: We combine the Neon Adapter with Lazy Initialization
+// 1. THE PRISMA 7 FIX + VERCEL SANITIZER SHIELD
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
   if (!globalForPrisma.prisma) {
-    const dbUrl = process.env.DATABASE_URL;
-
-    console.log("Connection Check:", dbUrl ? "URL detected" : "URL IS MISSING");
+    // Note: 'let' instead of 'const' so we can modify and clean the string
+    let dbUrl = process.env.DATABASE_URL;
 
     if (!dbUrl) {
       throw new Error("DATABASE_URL is missing from Vercel!");
     }
 
-    // Set up the Neon connection pool
+    // 🛡️ THE SHIELD: This aggressively strips away any quotes or spaces Vercel adds
+    dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
+
+    console.log("Sanitized URL Check:", dbUrl.substring(0, 15) + "...");
+
+    // Set up the Neon connection pool with the squeaky-clean URL
     const pool = new Pool({ connectionString: dbUrl });
     
     // We use "as any" to bypass the strict TypeScript version mismatch
