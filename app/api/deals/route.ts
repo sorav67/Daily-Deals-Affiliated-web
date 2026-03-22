@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
@@ -11,9 +12,8 @@ const getPrisma = () => {
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    globalForPrisma.prisma = new PrismaClient({
-      datasources: { db: { url: dbUrl } }
-    });
+    const adapter = new PrismaNeon({ connectionString: dbUrl });
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
 };

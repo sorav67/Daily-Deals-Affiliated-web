@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'; 
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
@@ -13,9 +14,8 @@ const getPrisma = () => {
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    globalForPrisma.prisma = new PrismaClient({
-      datasources: { db: { url: dbUrl } }
-    });
+    const adapter = new PrismaNeon({ connectionString: dbUrl });
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
 };

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
@@ -12,10 +13,9 @@ const getPrisma = () => {
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    // Prisma will happily accept datasources now that the adapter feature is off!
-    globalForPrisma.prisma = new PrismaClient({
-      datasources: { db: { url: dbUrl } }
-    });
+    // PRISMA 7 OFFICIAL SETUP: No Pool required!
+    const adapter = new PrismaNeon({ connectionString: dbUrl });
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
 };
@@ -32,6 +32,10 @@ export default async function Home() {
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center"><span className="text-white font-bold text-xl">⚡</span></div>
               <span className="font-extrabold text-xl text-slate-900 tracking-tight">LootDrop</span>
+            </div>
+            <div className="hidden md:flex space-x-8">
+              <a href="#" className="text-slate-500 hover:text-blue-600 font-medium transition">Today's Deals</a>
+              <a href="#" className="text-slate-500 hover:text-blue-600 font-medium transition">Trending</a>
             </div>
           </div>
         </div>
