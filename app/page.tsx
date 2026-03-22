@@ -1,16 +1,36 @@
+export const dynamic = 'force-dynamic';
+
 import { PrismaClient } from '@prisma/client';
+import { Pool } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 
-// Set up the Neon database connection
-const adapter = new PrismaNeon({
-  connectionString: process.env.DATABASE_URL as string,
-});
-const prisma = new PrismaClient({ adapter });
+// 🛡️ THE SHIELD: Now protecting the homepage!
+const getPrisma = () => {
+  const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
+  
+  if (!globalForPrisma.prisma) {
+    let dbUrl = process.env.DATABASE_URL;
 
-// Tell Next.js to fetch fresh deals every time someone loads the page
-export const revalidate = 0; 
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is missing from Vercel!");
+    }
+
+    // Aggressively strips away any quotes or spaces Vercel adds
+    dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
+
+    console.log("Homepage URL Check:", dbUrl.substring(0, 15) + "...");
+
+    const pool = new Pool({ connectionString: dbUrl });
+    const adapter = new PrismaNeon(pool as any);
+    globalForPrisma.prisma = new PrismaClient({ adapter });
+  }
+  return globalForPrisma.prisma;
+};
 
 export default async function Home() {
+  // Wake up Prisma safely ONLY when the page is actually requested
+  const prisma = getPrisma();
+
   // Fetch all deals from the database, newest first
   const deals = await prisma.deal.findMany({
     orderBy: { createdAt: 'desc' },
@@ -24,7 +44,6 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              {/* A simple CSS Logo */}
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">⚡</span>
               </div>
@@ -70,7 +89,6 @@ export default async function Home() {
                 key={deal.id} 
                 className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col"
               >
-                {/* Image Placeholder (or actual image if provided) */}
                 <div className="h-48 bg-slate-100 relative border-b border-slate-100 flex items-center justify-center overflow-hidden">
                   {deal.imageUrl ? (
                     <img src={deal.imageUrl} alt={deal.title} className="w-full h-full object-cover" />
@@ -80,7 +98,6 @@ export default async function Home() {
                     </div>
                   )}
                   
-                  {/* Platform Badge overlay */}
                   <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       {deal.platform}
@@ -88,7 +105,6 @@ export default async function Home() {
                   </div>
                 </div>
                 
-                {/* Card Content */}
                 <div className="p-6 flex flex-col flex-grow">
                   <div className="text-xs font-medium text-slate-400 mb-2">
                     {deal.createdAt.toLocaleDateString()}
@@ -100,7 +116,6 @@ export default async function Home() {
                     {deal.content}
                   </p>
                   
-                  {/* Call to Action Button */}
                   <a 
                     href={deal.affiliateUrl} 
                     target="_blank" 
