@@ -5,26 +5,23 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
+// 1. THE EXPLICIT INJECTION (Modernized for Prisma 7+)
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
   if (!globalForPrisma.prisma) {
     const dbUrl = process.env.DATABASE_URL;
 
-    // This will show up in your Vercel logs so we can verify the URL is actually there
     console.log("Connection Check:", dbUrl ? "URL detected" : "URL IS MISSING");
 
     if (!dbUrl) {
       throw new Error("DATABASE_URL is missing from Vercel Environment Variables!");
     }
 
+    // THE FIX: We use the new 'datasourceUrl' property and bypass strict typing
     globalForPrisma.prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: dbUrl,
-        },
-      },
-    });
+      datasourceUrl: dbUrl,
+    } as any);
   }
   return globalForPrisma.prisma;
 };
