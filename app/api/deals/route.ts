@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { Pool } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
@@ -12,7 +13,17 @@ const getPrisma = () => {
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    const adapter = new PrismaNeon({ connectionString: dbUrl });
+    const url = new URL(dbUrl);
+    const pool = new Pool({
+      host: url.hostname,
+      user: url.username,
+      password: url.password,
+      database: url.pathname.slice(1),
+      port: parseInt(url.port) || 5432,
+      ssl: true,
+    });
+
+    const adapter = new PrismaNeon(pool);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
@@ -25,7 +36,7 @@ export async function POST(request: Request) {
     const { title, content, affiliateUrl, platform, imageUrl, secret } = body;
 
     if (secret !== process.env.API_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid Secret' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const newDeal = await prisma.deal.create({
@@ -34,6 +45,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, dealId: newDeal.id }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to save the deal' }, { status: 500 });
+    return NextResponse.json({ error: 'Database crash' }, { status: 500 });
   }
 }
