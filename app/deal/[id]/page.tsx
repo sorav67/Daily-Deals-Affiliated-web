@@ -5,12 +5,26 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-// 1. THE LAZY SINGLETON: This function ensures Prisma only wakes up 
-// when a user actually visits the page, NOT during the Vercel build.
 const getPrisma = () => {
-  const globalForPrisma = global as unknown as { prisma: PrismaClient };
+  const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
+  
   if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient();
+    const dbUrl = process.env.DATABASE_URL;
+
+    // This will show up in your Vercel logs so we can verify the URL is actually there
+    console.log("Connection Check:", dbUrl ? "URL detected" : "URL IS MISSING");
+
+    if (!dbUrl) {
+      throw new Error("DATABASE_URL is missing from Vercel Environment Variables!");
+    }
+
+    globalForPrisma.prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: dbUrl,
+        },
+      },
+    });
   }
   return globalForPrisma.prisma;
 };
