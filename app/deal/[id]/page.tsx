@@ -2,16 +2,25 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import ClaimButton from '../../components/ClaimButton'; 
 
 const adapter = new PrismaNeon({
   connectionString: process.env.DATABASE_URL as string,
 });
 const prisma = new PrismaClient({ adapter });
 
-// 1. This generates the beautiful preview card for WhatsApp and Telegram!
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+// Next.js 15 requires params to be a Promise
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+// 1. Generate Metadata
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // AWAIT the params before reading the ID!
+  const resolvedParams = await params;
+  
   const deal = await prisma.deal.findUnique({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
   });
 
   if (!deal) return { title: 'Deal Not Found' };
@@ -28,10 +37,13 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 // 2. The actual Product Page UI
-export default async function DealPage({ params }: { params: { id: string } }) {
+export default async function DealPage({ params }: Props) {
+  // AWAIT the params before reading the ID!
+  const resolvedParams = await params;
+
   // Fetch the specific deal clicked by the user
   const deal = await prisma.deal.findUnique({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
   });
 
   // If the deal doesn't exist, show a 404 page
@@ -73,14 +85,8 @@ export default async function DealPage({ params }: { params: { id: string } }) {
             {deal.content}
           </p>
           
-          <a 
-            href={deal.affiliateUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex justify-center items-center py-4 px-10 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-2xl transition-transform hover:scale-105 shadow-lg shadow-blue-200"
-          >
-            Go to {deal.platform} to Claim <span className="ml-2">→</span>
-          </a>
+          {/* Your smart button! */}
+          <ClaimButton url={deal.affiliateUrl} platform={deal.platform} />
         </div>
 
         {/* SIMILAR DEALS SECTION */}
