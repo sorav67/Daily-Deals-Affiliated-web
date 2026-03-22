@@ -5,28 +5,28 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-// --- SINGLETON SETUP START ---
-// This block ensures we don't open a new database connection every time the page loads.
-// It reuses the existing connection, which is vital for Neon's connection limits.
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-const prisma = globalForPrisma.prisma || new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-// --- SINGLETON SETUP END ---
+// 1. THE LAZY SINGLETON: This function ensures Prisma only wakes up 
+// when a user actually visits the page, NOT during the Vercel build.
+const getPrisma = () => {
+  const globalForPrisma = global as unknown as { prisma: PrismaClient };
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient();
+  }
+  return globalForPrisma.prisma;
+};
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-// 1. Generate Metadata for social previews
+// 2. Generate Metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
-  
-  if (!resolvedParams || !resolvedParams.id) {
-    return { title: 'Deal Not Found' };
-  }
+  if (!resolvedParams?.id) return { title: 'Deal Not Found' };
 
+  // Use the lazy function here
+  const prisma = getPrisma();
+  
   const deal = await prisma.deal.findUnique({
     where: { id: resolvedParams.id },
   });
@@ -44,24 +44,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// 2. The main Page Component
+// 3. The actual Product Page UI
 export default async function DealPage({ params }: Props) {
   const resolvedParams = await params;
+  if (!resolvedParams?.id) notFound();
 
-  // Failsafe: Stop if ID is missing before Prisma tries to search
-  if (!resolvedParams || !resolvedParams.id) {
-    notFound();
-  }
+  // Use the lazy function here too
+  const prisma = getPrisma();
 
   const deal = await prisma.deal.findUnique({
     where: { id: resolvedParams.id },
   });
 
-  if (!deal) {
-    notFound();
-  }
+  if (!deal) notFound();
 
-  // Fetch 3 recent deals for the "More Active Deals" section
   const similarDeals = await prisma.deal.findMany({
     where: { id: { not: deal.id } },
     take: 3,
@@ -80,7 +76,6 @@ export default async function DealPage({ params }: Props) {
       </nav>
 
       <main className="flex-grow max-w-4xl mx-auto px-4 py-12 w-full">
-        {/* MAIN DEAL CARD */}
         <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-slate-200 mb-16 text-center">
           <span className="inline-block px-4 py-1.5 bg-slate-100 text-slate-600 text-sm font-bold uppercase tracking-wider rounded-full mb-6">
             {deal.platform} Deal
@@ -97,7 +92,6 @@ export default async function DealPage({ params }: Props) {
           <ClaimButton url={deal.affiliateUrl} platform={deal.platform} />
         </div>
 
-        {/* RELATED DEALS */}
         {similarDeals.length > 0 && (
           <div>
             <h3 className="text-xl font-bold text-slate-800 mb-6 border-b border-slate-200 pb-2">
