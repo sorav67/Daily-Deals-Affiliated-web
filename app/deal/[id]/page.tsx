@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic'; 
 
 import { PrismaClient } from '@prisma/client';
+import { Pool } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-// 1. THE EXPLICIT INJECTION (Modernized for Prisma 7+)
+// 1. THE PRISMA 7 FIX: We combine the Neon Adapter with Lazy Initialization
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
   
@@ -15,13 +17,17 @@ const getPrisma = () => {
     console.log("Connection Check:", dbUrl ? "URL detected" : "URL IS MISSING");
 
     if (!dbUrl) {
-      throw new Error("DATABASE_URL is missing from Vercel Environment Variables!");
+      throw new Error("DATABASE_URL is missing from Vercel!");
     }
 
-    // THE FIX: We use the new 'datasourceUrl' property and bypass strict typing
-    globalForPrisma.prisma = new PrismaClient({
-      datasourceUrl: dbUrl,
-    } as any);
+    // Set up the Neon connection pool
+    const pool = new Pool({ connectionString: dbUrl });
+    
+    // We use "as any" to bypass the strict TypeScript version mismatch
+    const adapter = new PrismaNeon(pool as any);
+
+    // Prisma 7 is finally happy because it receives the required 'adapter'
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
 };
@@ -35,7 +41,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
   if (!resolvedParams?.id) return { title: 'Deal Not Found' };
 
-  // Use the lazy function here
   const prisma = getPrisma();
   
   const deal = await prisma.deal.findUnique({
@@ -60,7 +65,6 @@ export default async function DealPage({ params }: Props) {
   const resolvedParams = await params;
   if (!resolvedParams?.id) notFound();
 
-  // Use the lazy function here too
   const prisma = getPrisma();
 
   const deal = await prisma.deal.findUnique({
