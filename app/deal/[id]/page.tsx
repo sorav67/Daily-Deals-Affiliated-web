@@ -1,24 +1,27 @@
 import { PrismaClient } from '@prisma/client';
+import { Pool } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
 
-const adapter = new PrismaNeon({
-  connectionString: process.env.DATABASE_URL as string,
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL as string });
+const adapter = new PrismaNeon(pool);
 const prisma = new PrismaClient({ adapter });
 
-// Next.js 15 requires params to be a Promise
 type Props = {
   params: Promise<{ id: string }>;
 };
 
 // 1. Generate Metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  // AWAIT the params before reading the ID!
   const resolvedParams = await params;
   
+  // 🚨 FAILSAFE 1: If Next.js sends a ghost request, stop immediately!
+  if (!resolvedParams || !resolvedParams.id) {
+    return { title: 'Deal Not Found' };
+  }
+
   const deal = await prisma.deal.findUnique({
     where: { id: resolvedParams.id },
   });
@@ -38,20 +41,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 // 2. The actual Product Page UI
 export default async function DealPage({ params }: Props) {
-  // AWAIT the params before reading the ID!
   const resolvedParams = await params;
 
-  // Fetch the specific deal clicked by the user
+  // 🚨 FAILSAFE 2: Block undefined IDs before Prisma panics!
+  if (!resolvedParams || !resolvedParams.id) {
+    notFound();
+  }
+
   const deal = await prisma.deal.findUnique({
     where: { id: resolvedParams.id },
   });
 
-  // If the deal doesn't exist, show a 404 page
   if (!deal) {
     notFound();
   }
 
-  // Fetch 3 recent deals to show at the bottom (excluding the current one)
   const similarDeals = await prisma.deal.findMany({
     where: { id: { not: deal.id } },
     take: 3,
@@ -60,7 +64,6 @@ export default async function DealPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
-      {/* Simple Header */}
       <nav className="bg-white border-b border-slate-200 py-4">
         <div className="max-w-4xl mx-auto px-4 flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -71,7 +74,6 @@ export default async function DealPage({ params }: Props) {
       </nav>
 
       <main className="flex-grow max-w-4xl mx-auto px-4 py-12 w-full">
-        {/* MAIN PRODUCT SPOTLIGHT */}
         <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-slate-200 mb-16 text-center">
           <span className="inline-block px-4 py-1.5 bg-slate-100 text-slate-600 text-sm font-bold uppercase tracking-wider rounded-full mb-6">
             {deal.platform} Deal
@@ -85,11 +87,9 @@ export default async function DealPage({ params }: Props) {
             {deal.content}
           </p>
           
-          {/* Your smart button! */}
           <ClaimButton url={deal.affiliateUrl} platform={deal.platform} />
         </div>
 
-        {/* SIMILAR DEALS SECTION */}
         {similarDeals.length > 0 && (
           <div>
             <h3 className="text-xl font-bold text-slate-800 mb-6 border-b border-slate-200 pb-2">
