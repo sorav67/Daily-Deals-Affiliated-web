@@ -57,7 +57,15 @@ export default async function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {deals.map((deal) => (
               <div key={deal.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all p-6 flex flex-col">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">{deal.title}</h3>
+                {deal.imageUrl && (
+                  <div className="w-full h-48 bg-slate-100 mb-4 rounded-xl overflow-hidden shrink-0">
+                    <img src={deal.imageUrl} alt={deal.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <h3 className="text-xl font-bold text-slate-900 mb-2 truncate">{deal.title}</h3>
+                {deal.content && (
+                  <p className="text-slate-600 text-sm mb-4 line-clamp-2">{deal.content}</p>
+                )}
                 <a href={`/deal/${deal.id}`} className="mt-auto py-3 px-4 bg-blue-600 text-white text-center font-bold rounded-xl hover:bg-blue-700 transition">
                   View Deal →
                 </a>

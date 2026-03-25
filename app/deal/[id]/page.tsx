@@ -41,8 +41,13 @@ export default async function DealPage({ params }: Props) {
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       <main className="flex-grow max-w-4xl mx-auto px-4 py-12 w-full">
         <div className="bg-white rounded-3xl p-12 shadow-sm border border-slate-200 text-center">
+          {deal.imageUrl && (
+            <div className="w-full max-w-lg mx-auto h-64 bg-slate-100 mb-8 rounded-2xl overflow-hidden">
+              <img src={deal.imageUrl} alt={deal.title} className="w-full h-full object-contain" />
+            </div>
+          )}
           <h1 className="text-4xl font-extrabold text-slate-900 mb-6">{deal.title}</h1>
-          <p className="text-lg text-slate-600 mb-10">{deal.content}</p>
+          <p className="text-lg text-slate-600 mb-10 whitespace-pre-wrap">{deal.content}</p>
           <ClaimButton url={deal.affiliateUrl} platform={deal.platform} />
         </div>
       </main>
