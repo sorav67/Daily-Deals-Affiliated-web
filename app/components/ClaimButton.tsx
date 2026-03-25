@@ -1,56 +1,23 @@
 'use client'; // Tells Next.js this runs on the user's device, not the server
 
 export default function ClaimButton({ url, platform }: { url: string, platform: string }) {
-  const handleDeepLink = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
+  // Ensure we have a valid absolute URL for the href attribute
+  let safeUrl = url.trim();
+  if (!safeUrl.startsWith('http')) {
+    safeUrl = 'https://' + safeUrl;
+  }
 
-    // Ensure URL has protocol to prevent URL parsing errors
-    let safeUrl = url;
-    if (!safeUrl.startsWith('http')) {
-      safeUrl = 'https://' + safeUrl;
-    }
-
-    if (platform.toLowerCase() === 'amazon') {
-      try {
-        const urlObj = new URL(safeUrl);
-        const pathAndQuery = urlObj.pathname + urlObj.search;
-        const host = urlObj.host; // e.g., www.amazon.in
-
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        if (isAndroid) {
-          // Determine the correct Amazon Android package based on the TLD
-          let appPackage = 'com.amazon.mShop.android.shopping';
-          if (host.includes('.in')) {
-            appPackage = 'in.amazon.mShop.android.shopping';
-          } else if (host.includes('.co.uk')) {
-            appPackage = 'uk.amazon.mShop.android.shopping';
-          }
-
-          window.location.href = `intent://${host}${pathAndQuery}#Intent;scheme=https;package=${appPackage};end;`;
-        } else if (isIOS) {
-          window.location.href = `amzn://${host}${pathAndQuery}`;
-          setTimeout(() => {
-            window.location.href = safeUrl;
-          }, 1500);
-        } else {
-          window.location.href = safeUrl;
-        }
-      } catch (error) {
-        window.location.href = safeUrl;
-      }
-    } else {
-      window.location.href = safeUrl;
-    }
-  };
-
+  // Use a standard anchor tag without target="_blank" and without rel="noopener noreferrer".
+  // 1. target="_blank" prevents Android 12+ from intercepting App Links because they force opening in the browser.
+  // 2. rel="noopener noreferrer" strips the HTTP Referer, which triggers Amazon's bot protection 
+  //    and serves broken HTML (the `doctype html>` issue) on mobile devices.
+  // 3. Javascript window.location.href assignments often fail to trigger OS Deep Links due to user-interaction security rules.
   return (
-    <button 
-      onClick={handleDeepLink}
+    <a 
+      href={safeUrl}
       className="inline-flex justify-center items-center py-4 px-10 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-2xl transition-transform hover:scale-105 shadow-lg shadow-blue-200"
     >
       Go to {platform} to Claim <span className="ml-2">→</span>
-    </button>
+    </a>
   );
 }
