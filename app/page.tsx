@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
 import { neon } from '@neondatabase/serverless';
-import { PrismaNeonHTTP } from '@prisma/adapter-neon';
+import { PrismaNeon } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
@@ -21,7 +21,7 @@ const getPrisma = () => {
 
     // 🚀 Initialize using the HTTP fetch-based driver (Bulletproof on Vercel)
     const sql = neon(dbUrl);
-    const adapter = new PrismaNeonHTTP(sql as any);
+    const adapter = new PrismaNeon(sql as any);
 
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }

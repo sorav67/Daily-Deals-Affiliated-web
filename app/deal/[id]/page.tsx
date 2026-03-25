@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
 import { neon } from '@neondatabase/serverless';
-import { PrismaNeonHTTP } from '@prisma/adapter-neon';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ClaimButton from '../../components/ClaimButton'; 
@@ -16,7 +16,7 @@ const getPrisma = () => {
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
     const sql = neon(dbUrl);
-    const adapter = new PrismaNeonHTTP(sql as any);
+    const adapter = new PrismaNeon(sql as any);
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
   return globalForPrisma.prisma;
