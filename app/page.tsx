@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { PrismaClient } from '@prisma/client';
 import { neon } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaNeonHttp } from '@prisma/adapter-neon';
 
 const getPrisma = () => {
   const globalForPrisma = global as unknown as { prisma: PrismaClient | undefined };
@@ -19,9 +19,8 @@ const getPrisma = () => {
     dbUrl = dbUrl.replace(/^["']|["']$/g, '').trim();
     if (!dbUrl.startsWith('postgres')) dbUrl = 'postgresql://' + dbUrl;
 
-    // 🚀 Initialize using the HTTP fetch-based driver (Bulletproof on Vercel)
-    const sql = neon(dbUrl);
-    const adapter = new PrismaNeon(sql as any);
+    // Initialize using the PrismaNeonHttp driver
+    const adapter = new PrismaNeonHttp(dbUrl, { fetchOptions: {} } as any);
 
     globalForPrisma.prisma = new PrismaClient({ adapter });
   }
